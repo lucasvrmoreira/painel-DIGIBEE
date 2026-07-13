@@ -33,6 +33,11 @@ def receber_erro():
 def listar():
     return jsonify(erros_logs)
 
+
+@app.route('/', methods=['GET'])
+def index():
+    return "API de Alertas DIGIBEE está rodando. Use /listar-erros para ver os logs."
+
 if __name__ == '__main__':
     # O Render define a porta via variável de ambiente, por isso usamos int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
