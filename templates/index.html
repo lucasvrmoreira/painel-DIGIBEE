@@ -1,18 +1,42 @@
-<script>
-    // Mude de localhost para a URL real do Render
-    fetch('https://painel-digibee-1.onrender.com/listar-erros')
-        .then(res => res.json())
-        .then(data => {
-            const tabela = document.getElementById('tabela-erros');
-            data.forEach(e => {
-                // Ajuste os nomes conforme o que você envia da Digibee:
-                // e.mensagem, e.diagnostico_causa, e.acao_recomendada, e.link_monitor
-                tabela.innerHTML += `<tr>
-                    <td>${e.pipeline_name}</td>
-                    <td>${e.diagnostico_causa}</td>
-                    <td>${e.acao_recomendada}</td>
-                    <td><a href="${e.link_monitor}" target="_blank">Acessar</a></td>
-                </tr>`;
-            });
-        });
-</script>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor de Erros Digibee</title>
+</head>
+<body>
+    <h2>Monitor de Erros Digibee</h2>
+    <table id="tabela-erros" border="1">
+        <thead>
+            <tr>
+                <th>Pipeline</th>
+                <th>Diagnóstico</th>
+                <th>Ação</th>
+                <th>Link</th>
+            </tr>
+        </thead>
+        <tbody id="corpo-tabela">
+            </tbody>
+    </table>
+
+    <script>
+        // Usamos o caminho relativo '/' para evitar erros de bloqueio (CORS)
+        fetch('/listar-erros')
+            .then(res => res.json())
+            .then(data => {
+                const corpoTabela = document.getElementById('corpo-tabela');
+                corpoTabela.innerHTML = ""; // Limpa a tabela antes de preencher
+                
+                data.forEach(e => {
+                    corpoTabela.innerHTML += `<tr>
+                        <td>${e.pipeline_name || 'N/A'}</td>
+                        <td>${e.diagnostico_causa || 'N/A'}</td>
+                        <td>${e.acao_recomendada || 'N/A'}</td>
+                        <td><a href="${e.link_monitor || '#'}" target="_blank">Acessar</a></td>
+                    </tr>`;
+                });
+            })
+            .catch(err => console.error("Erro ao carregar dados:", err));
+    </script>
+</body>
+</html>
