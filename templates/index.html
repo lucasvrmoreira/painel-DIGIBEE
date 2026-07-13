@@ -2,11 +2,25 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitor de Erros Digibee</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { border-left: 5px solid #007bff; padding-left: 15px; color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: #007bff; color: white; padding: 12px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #ddd; }
+        tr:hover { background-color: #f1f1f1; }
+        .btn-link { background: #007bff; color: white; padding: 6px 12px; text-decoration: none; border-radius: 4px; font-size: 0.9em; }
+        .btn-link:hover { background: #0056b3; }
+    </style>
 </head>
 <body>
+
+<div class="container">
     <h2>Monitor de Erros Digibee</h2>
-    <table id="tabela-erros" border="1">
+    <table>
         <thead>
             <tr>
                 <th>Pipeline</th>
@@ -16,27 +30,34 @@
             </tr>
         </thead>
         <tbody id="corpo-tabela">
-            </tbody>
+            <tr><td colspan="4" style="text-align:center;">Carregando dados...</td></tr>
+        </tbody>
     </table>
+</div>
 
-    <script>
-        // Usamos o caminho relativo '/' para evitar erros de bloqueio (CORS)
-        fetch('/listar-erros')
-            .then(res => res.json())
-            .then(data => {
-                const corpoTabela = document.getElementById('corpo-tabela');
-                corpoTabela.innerHTML = ""; // Limpa a tabela antes de preencher
-                
-                data.forEach(e => {
-                    corpoTabela.innerHTML += `<tr>
-                        <td>${e.pipeline_name || 'N/A'}</td>
-                        <td>${e.diagnostico_causa || 'N/A'}</td>
-                        <td>${e.acao_recomendada || 'N/A'}</td>
-                        <td><a href="${e.link_monitor || '#'}" target="_blank">Acessar</a></td>
-                    </tr>`;
-                });
-            })
-            .catch(err => console.error("Erro ao carregar dados:", err));
-    </script>
+<script>
+    fetch('/listar-erros')
+        .then(res => res.json())
+        .then(data => {
+            const corpoTabela = document.getElementById('corpo-tabela');
+            if (data.length === 0) {
+                corpoTabela.innerHTML = "<tr><td colspan='4' style='text-align:center;'>Nenhum erro encontrado.</td></tr>";
+                return;
+            }
+            corpoTabela.innerHTML = "";
+            data.forEach(e => {
+                corpoTabela.innerHTML += `<tr>
+                    <td><b>${e.pipeline_name || 'N/A'}</b></td>
+                    <td>${e.diagnostico_causa || 'N/A'}</td>
+                    <td>${e.acao_recomendada || 'N/A'}</td>
+                    <td><a href="${e.link_monitor || '#'}" class="btn-link" target="_blank">Ver Log</a></td>
+                </tr>`;
+            });
+        })
+        .catch(err => {
+            document.getElementById('corpo-tabela').innerHTML = "<tr><td colspan='4' style='color:red;'>Erro ao carregar dados.</td></tr>";
+        });
+</script>
+
 </body>
 </html>
