@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
@@ -34,9 +34,15 @@ def listar():
     return jsonify(erros_logs)
 
 
-@app.route('/', methods=['GET'])
+
+
+
+# Nova rota para servir o painel
+@app.route('/')
 def index():
-    return "API de Alertas DIGIBEE está rodando. Use /listar-erros para ver os logs."
+    return render_template('index.html')
+
+# ... mantenha suas outras rotas abaixo ...
 
 if __name__ == '__main__':
     # O Render define a porta via variável de ambiente, por isso usamos int(os.environ.get("PORT", 5000))
