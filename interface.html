@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Monitor de Erros Digibee</h2>
+    <table id="tabela-erros" border="1">
+        <tr><th>Pipeline</th><th>Causa</th><th>Ação</th><th>Link</th></tr>
+    </table>
+
+    <script>
+        fetch('http://localhost:5000/listar-erros')
+            .then(res => res.json())
+            .then(data => {
+                const tabela = document.getElementById('tabela-erros');
+                data.forEach(e => {
+                    tabela.innerHTML += `<tr>
+                        <td>${e.pipeline_name}</td>
+                        <td>${e.diagnosis.causa}</td>
+                        <td>${e.diagnosis.acao}</td>
+                        <td><a href="${e.link}" target="_blank">Acessar</a></td>
+                    </tr>`;
+                });
+            });
+    </script>
+</body>
+</html>
