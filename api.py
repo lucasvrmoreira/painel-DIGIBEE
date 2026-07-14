@@ -39,32 +39,61 @@ def analisar_erro_com_claude(erro_mensagem, pipeline_name):
 Pipeline: {pipeline_name}
 Erro: {erro_mensagem}
 
-Responda APENAS em JSON:
-{{
-    "causa_provavel": "...",
-    "acao_recomendada": "...",
-    "severidade": "alta/media/baixa"
-}}"""
+Responda APENAS em JSON (sem markdown, sem preamble):
+{{"causa_provavel": "...", "acao_recomendada": "...", "severidade": "alta/media/baixa"}}"""
                 }
             ]
         )
         
-        resposta = message.content[0].text
-        print(f"✅ Claude respondeu: {resposta[:100]}...")
-        return json.loads(resposta)
+        resposta = message.content[0].text.strip()
+        print(f"📥 Resposta Claude: {resposta[:200]}")
+        
+        # Remove markdown se existir
+        if "```json" in resposta:
+            resposta = resposta.split("```json")[1].split("```")[0].strip()
+        elif "```" in resposta:
+            resposta = resposta.split("```")[1].split("```")[0].strip()
+        
+        print(f"🧹 Resposta limpa: {resposta[:200]}")
+        resultado = json.loads(resposta)
+        print(f"✅ Parse bem-sucedido!")
+        return resultado
         
     except json.JSONDecodeError as e:
-        print(f"❌ JSON Parse Error: {e}")
-        return {
-            "causa_provavel": "Erro ao parsear",
-            "acao_recomendada": "Verifique logs",
-            "severidade": "media"
-        }
+        print(f"❌ JSON Decode Error: {e}")
+        print(f"Resposta problemática: {resposta[:300]}")
+        
+        # Fallback: analisa o erro de forma simples
+        if "URL" in erro_mensagem and "invalid" in erro_mensagem:
+            return {
+                "causa_provavel": "URL do endpoint inválida ou mal configurada",
+                "acao_recomendada": "Verifique a configuração de URL do componente",
+                "severidade": "alta"
+            }
+        elif "Timeout" in erro_mensagem:
+            return {
+                "causa_provavel": "Timeout na requisição (servidor lento)",
+                "acao_recomendada": "Aumente timeout ou verifique disponibilidade",
+                "severidade": "media"
+            }
+        elif "Connection" in erro_mensagem:
+            return {
+                "causa_provavel": "Falha na conexão com o servidor",
+                "acao_recomendada": "Verifique conectividade e configuração de rede",
+                "severidade": "alta"
+            }
+        else:
+            return {
+                "causa_provavel": "Erro detectado - análise disponível",
+                "acao_recomendada": f"Verifique: {erro_mensagem[:80]}",
+                "severidade": "media"
+            }
+            
     except Exception as e:
-        print(f"❌ Exception: {type(e).__name__}: {str(e)}")
+        print(f"❌ Exception: {type(e).__name__}: {e}")
         return {
-            "causa_provavel": f"Erro: {type(e).__name__}",
-            "acao_recomendada": str(e),
+            "causa_provavel": f"Erro ao analisar ({type(e).__name__})",
+            "acao_recomendada": "Verifique os logs do servidor",
             "severidade": "media"
         }
 
