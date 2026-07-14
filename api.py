@@ -11,21 +11,23 @@ erros_logs = []
 
 @app.route('/webhook-erro', methods=['POST'])
 def receber_erro():
-    # 1. Segurança: Verifica se o token está no Header
+    # 1. Tenta pegar do Header PRIMEIRO
     token_recebido = request.headers.get('X-Digibee-Token')
+    
+    # 2. Se não achar, tenta na Query String
+    if not token_recebido:
+        token_recebido = request.args.get('X-Digibee-Token')
+    
     if token_recebido != TOKEN_SECRETO:
         return jsonify({"erro": "Acesso negado"}), 403
     
-    # 2. Validação básica: Garante que é JSON
     if not request.is_json:
         return jsonify({"erro": "Formato inválido"}), 400
     
     dados = request.json
-    
-    # 3. Adiciona o erro na lista
     erros_logs.insert(0, dados)
     
-    print(f"Erro recebido do pipeline {dados.get('pipeline_name')}: {dados.get('causa_provavel')}")
+    print(f"✅ Erro recebido: {dados.get('pipeline_name')}")
     
     return jsonify({"status": "sucesso"}), 200
 
