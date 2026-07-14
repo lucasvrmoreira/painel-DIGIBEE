@@ -1,117 +1,169 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Erros Digibee</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { border-left: 5px solid #007bff; padding-left: 15px; color: #2c3e50; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.95em; }
-        th { background-color: #007bff; color: white; padding: 12px; text-align: left; }
-        td { padding: 10px; border-bottom: 1px solid #ddd; }
-        tr:hover { background-color: #f1f1f1; }
-        .btn { background: #007bff; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
-        .btn:hover { background: #0056b3; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .close { float: right; cursor: pointer; font-size: 20px; }
-        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; font-size: 12px; }
-        .badge { padding: 4px 8px; border-radius: 3px; font-size: 0.85em; font-weight: bold; }
-        .alta { background: #dc3545; color: white; }
-        .media { background: #ffc107; color: black; }
-        .baixa { background: #28a745; color: white; }
-        .truncado { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    </style>
-</head>
-<body>
+import os
+import json
+from flask import Flask, request, jsonify, render_template
+from anthropic import Anthropic
 
-<div class="container">
-    <h2>📊 Monitor de Erros Digibee com IA</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Pipeline</th>
-                <th>Erro</th>
-                <th>Causa Provável</th>
-                <th>Ação Recomendada</th>
-                <th>Severidade</th>
-                <th>Detalhes</th>
-            </tr>
-        </thead>
-        <tbody id="corpo-tabela">
-            <tr><td colspan="6" style="text-align:center;">Carregando dados...</td></tr>
-        </tbody>
-    </table>
-</div>
+app = Flask(__name__)
 
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="fecharModal()">&times;</span>
-        <h3>Detalhes Completos do Erro</h3>
-        <pre id="modalBody"></pre>
-    </div>
-</div>
+TOKEN_SECRETO = os.environ.get("DIGIBEE_API_TOKEN", "Saopaulo@@2026")
+CLAUDE_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-<script>
-    function formatarTimestamp(ms) {
-        if (!ms) return 'N/A';
-        const data = new Date(parseInt(ms));
-        return data.toLocaleString('pt-BR');
-    }
+print(f"🔑 Chave configurada ao iniciar? {bool(CLAUDE_API_KEY)}")
 
-    function truncar(texto, max = 50) {
-        if (!texto) return 'N/A';
-        return texto.length > max ? texto.substring(0, max) + '...' : texto;
-    }
+erros_logs = []
+client = Anthropic()
 
-    function carregarErros() {
-        fetch('/listar-erros')
-            .then(res => res.json())
-            .then(data => {
-                const corpoTabela = document.getElementById('corpo-tabela');
-                if (data.length === 0) {
-                    corpoTabela.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Nenhum erro encontrado.</td></tr>";
-                    return;
+def analisar_erro_com_claude(erro_mensagem, pipeline_name):
+    """Usa Claude pra analisar o erro com respostas CONCISAS"""
+    try:
+        if not CLAUDE_API_KEY:
+            return {
+                "causa_provavel": "Chave API não configurada",
+                "acao_recomendada": "Configure ANTHROPIC_API_KEY",
+                "severidade": "alta"
+            }
+        
+        # Prompt MUITO específico pra respostas curtas
+        message = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=150,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""ANALISE O ERRO E RESPONDA MUITO CONCISO:
+
+ERRO: {erro_mensagem}
+PIPELINE: {pipeline_name}
+
+TAREFA:
+1. causa_provavel: O QUÊ deu errado? (máximo 5 palavras)
+2. acao_recomendada: O QUÊ fazer? (máximo 5 palavras, verbo + ação)
+3. severidade: alta/media/baixa
+
+RESPONDA APENAS JSON:
+{{"causa_provavel": "...", "acao_recomendada": "...", "severidade": "..."}}"""
                 }
-                corpoTabela.innerHTML = "";
-                data.forEach((e, index) => {
-                    const severidade = e.severidade || 'media';
-                    const badgeClass = `badge ${severidade}`;
-                    
-                    corpoTabela.innerHTML += `<tr>
-                        <td><b>${e.pipeline_name || 'N/A'}</b></td>
-                        <td class="truncado" title="${e.erro_mensagem || ''}">${truncar(e.erro_mensagem, 40)}</td>
-                        <td class="truncado" title="${e.causa_provavel || ''}">${truncar(e.causa_provavel, 40)}</td>
-                        <td class="truncado" title="${e.acao_recomendada || ''}">${truncar(e.acao_recomendada, 40)}</td>
-                        <td><span class="${badgeClass}">${severidade.toUpperCase()}</span></td>
-                        <td><button class="btn" onclick="verDetalhes(${index})">Ver</button></td>
-                    </tr>`;
-                });
-                window.erros = data;
-            })
-            .catch(err => {
-                document.getElementById('corpo-tabela').innerHTML = "<tr><td colspan='6' style='color:red;'>Erro ao carregar dados.</td></tr>";
-            });
+            ]
+        )
+        
+        resposta = message.content[0].text.strip()
+        print(f"📥 Resposta Claude: {resposta[:200]}")
+        
+        # Remove markdown se existir
+        if "```json" in resposta:
+            resposta = resposta.split("```json")[1].split("```")[0].strip()
+        elif "```" in resposta:
+            resposta = resposta.split("```")[1].split("```")[0].strip()
+        
+        resultado = json.loads(resposta)
+        print(f"✅ Parse bem-sucedido!")
+        return resultado
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON Decode Error: {e}")
+        # Fallback: análise automática do erro
+        return analisar_erro_automatico(erro_mensagem)
+            
+    except Exception as e:
+        print(f"❌ Exception: {type(e).__name__}: {e}")
+        return analisar_erro_automatico(erro_mensagem)
+
+def analisar_erro_automatico(erro_mensagem):
+    """Análise automática quando Claude falha"""
+    
+    erro_lower = erro_mensagem.lower()
+    
+    # Erros de URL/Conexão
+    if "url" in erro_lower and "invalid" in erro_lower:
+        return {
+            "causa_provavel": "URL do serviço inválida",
+            "acao_recomendada": "Verificar porta e hostname",
+            "severidade": "alta"
+        }
+    
+    if "modern.digibee.internal" in erro_lower:
+        return {
+            "causa_provavel": "Serviço não está ativado",
+            "acao_recomendada": "Ativar serviço na porta 1005",
+            "severidade": "alta"
+        }
+    
+    if "connection refused" in erro_lower or "refused" in erro_lower:
+        return {
+            "causa_provavel": "Serviço recusou conexão",
+            "acao_recomendada": "Verificar se serviço rodando",
+            "severidade": "alta"
+        }
+    
+    # Erros de Timeout
+    if "timeout" in erro_lower:
+        return {
+            "causa_provavel": "Serviço respondendo lento",
+            "acao_recomendada": "Aumentar timeout ou verificar carga",
+            "severidade": "media"
+        }
+    
+    # Erros de Rede
+    if "network" in erro_lower or "unreachable" in erro_lower:
+        return {
+            "causa_provavel": "Problema de conectividade",
+            "acao_recomendada": "Verificar firewall e rede",
+            "severidade": "alta"
+        }
+    
+    # Erros de Autenticação
+    if "401" in erro_lower or "403" in erro_lower or "unauthorized" in erro_lower:
+        return {
+            "causa_provavel": "Credenciais inválidas",
+            "acao_recomendada": "Verificar token ou senha",
+            "severidade": "alta"
+        }
+    
+    # Erro genérico
+    return {
+        "causa_provavel": "Erro no componente",
+        "acao_recomendada": "Verificar logs detalhados",
+        "severidade": "media"
     }
 
-    function verDetalhes(index) {
-        const erro = window.erros[index];
-        document.getElementById('modalBody').innerText = JSON.stringify(erro, null, 2);
-        document.getElementById('modal').style.display = 'block';
-    }
+@app.route('/webhook-erro', methods=['POST'])
+def receber_erro():
+    print("📥 POST recebido em /webhook-erro")
+    
+    token_recebido = request.headers.get('X-Digibee-Token')
+    if not token_recebido:
+        token_recebido = request.args.get('X-Digibee-Token')
+    
+    if token_recebido != TOKEN_SECRETO:
+        print(f"❌ Token inválido!")
+        return jsonify({"erro": "Acesso negado"}), 403
+    
+    if not request.is_json:
+        return jsonify({"erro": "Formato inválido"}), 400
+    
+    dados = request.json
+    erro_msg = dados.get('erro_mensagem', 'Erro desconhecido')
+    pipeline = dados.get('pipeline_name', 'N/A')
+    
+    print(f"🔍 Analisando erro: {pipeline}")
+    analise = analisar_erro_com_claude(erro_msg, pipeline)
+    
+    dados['causa_provavel'] = analise.get('causa_provavel')
+    dados['acao_recomendada'] = analise.get('acao_recomendada')
+    dados['severidade'] = analise.get('severidade')
+    
+    erros_logs.insert(0, dados)
+    print(f"✅ Erro salvo! Total: {len(erros_logs)}")
+    
+    return jsonify({"status": "sucesso"}), 200
 
-    function fecharModal() {
-        document.getElementById('modal').style.display = 'none';
-    }
+@app.route('/listar-erros', methods=['GET'])
+def listar():
+    return jsonify(erros_logs)
 
-    // Carrega ao abrir
-    carregarErros();
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-    // Atualiza a cada 2 segundos
-    setInterval(carregarErros, 2000);
-</script>
-
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
