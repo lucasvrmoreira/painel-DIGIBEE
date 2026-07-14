@@ -6,35 +6,42 @@
     <title>Monitor de Erros Digibee</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .container { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { border-left: 5px solid #007bff; padding-left: 15px; color: #2c3e50; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.95em; }
         th { background-color: #007bff; color: white; padding: 12px; text-align: left; }
-        td { padding: 12px; border-bottom: 1px solid #ddd; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
         tr:hover { background-color: #f1f1f1; }
-        .btn { background: #007bff; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn { background: #007bff; color: white; padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; }
         .btn:hover { background: #0056b3; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; max-width: 600px; width: 90%; }
+        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; }
         .close { float: right; cursor: pointer; font-size: 20px; }
         pre { background: #f0f0f0; padding: 10px; overflow-x: auto; font-size: 12px; }
+        .badge { padding: 4px 8px; border-radius: 3px; font-size: 0.85em; font-weight: bold; }
+        .alta { background: #dc3545; color: white; }
+        .media { background: #ffc107; color: black; }
+        .baixa { background: #28a745; color: white; }
+        .truncado { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Monitor de Erros Digibee</h2>
+    <h2>📊 Monitor de Erros Digibee com IA</h2>
     <table>
         <thead>
             <tr>
                 <th>Pipeline</th>
-                <th>Diagnóstico</th>
-                <th>Timestamp</th>
-                <th>Ação</th>
+                <th>Erro</th>
+                <th>Causa Provável</th>
+                <th>Ação Recomendada</th>
+                <th>Severidade</th>
+                <th>Detalhes</th>
             </tr>
         </thead>
         <tbody id="corpo-tabela">
-            <tr><td colspan="4" style="text-align:center;">Carregando dados...</td></tr>
+            <tr><td colspan="6" style="text-align:center;">Carregando dados...</td></tr>
         </tbody>
     </table>
 </div>
@@ -42,34 +49,50 @@
 <div id="modal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="fecharModal()">&times;</span>
-        <h3>Detalhes do Erro</h3>
+        <h3>Detalhes Completos do Erro</h3>
         <pre id="modalBody"></pre>
     </div>
 </div>
 
 <script>
+    function formatarTimestamp(ms) {
+        if (!ms) return 'N/A';
+        const data = new Date(parseInt(ms));
+        return data.toLocaleString('pt-BR');
+    }
+
+    function truncar(texto, max = 50) {
+        if (!texto) return 'N/A';
+        return texto.length > max ? texto.substring(0, max) + '...' : texto;
+    }
+
     function carregarErros() {
         fetch('/listar-erros')
             .then(res => res.json())
             .then(data => {
                 const corpoTabela = document.getElementById('corpo-tabela');
                 if (data.length === 0) {
-                    corpoTabela.innerHTML = "<tr><td colspan='4' style='text-align:center;'>Nenhum erro encontrado.</td></tr>";
+                    corpoTabela.innerHTML = "<tr><td colspan='6' style='text-align:center;'>Nenhum erro encontrado.</td></tr>";
                     return;
                 }
                 corpoTabela.innerHTML = "";
                 data.forEach((e, index) => {
+                    const severidade = e.severidade || 'media';
+                    const badgeClass = `badge ${severidade}`;
+                    
                     corpoTabela.innerHTML += `<tr>
                         <td><b>${e.pipeline_name || 'N/A'}</b></td>
-                        <td>${e.erro_mensagem || 'Sem detalhes'}</td>
-                        <td>${e.timestamp || 'N/A'}</td>
-                        <td><button class="btn" onclick="verDetalhes(${index})">Ver Log</button></td>
+                        <td class="truncado" title="${e.erro_mensagem || ''}">${truncar(e.erro_mensagem, 40)}</td>
+                        <td class="truncado" title="${e.causa_provavel || ''}">${truncar(e.causa_provavel, 40)}</td>
+                        <td class="truncado" title="${e.acao_recomendada || ''}">${truncar(e.acao_recomendada, 40)}</td>
+                        <td><span class="${badgeClass}">${severidade.toUpperCase()}</span></td>
+                        <td><button class="btn" onclick="verDetalhes(${index})">Ver</button></td>
                     </tr>`;
                 });
                 window.erros = data;
             })
             .catch(err => {
-                document.getElementById('corpo-tabela').innerHTML = "<tr><td colspan='4' style='color:red;'>Erro ao carregar dados.</td></tr>";
+                document.getElementById('corpo-tabela').innerHTML = "<tr><td colspan='6' style='color:red;'>Erro ao carregar dados.</td></tr>";
             });
     }
 
@@ -83,11 +106,11 @@
         document.getElementById('modal').style.display = 'none';
     }
 
-    // Carrega os dados ao abrir a página
+    // Carrega ao abrir
     carregarErros();
 
-    // Atualiza a cada 3 segundos
-    setInterval(carregarErros, 3000);
+    // Atualiza a cada 2 segundos
+    setInterval(carregarErros, 2000);
 </script>
 
 </body>
