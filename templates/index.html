@@ -5,114 +5,215 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitor de Erros Digibee</title>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 10px; margin: 0; }
-        .container { max-width: 100%; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2 { border-left: 5px solid #007bff; padding-left: 12px; color: #2c3e50; margin: 0 0 15px 0; font-size: 1.3em; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.8em; }
-        th { background-color: #007bff; color: white; padding: 8px; text-align: left; font-weight: 600; white-space: nowrap; }
-        td { padding: 6px; border-bottom: 1px solid #ddd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        tr:hover { background-color: #f9f9f9; }
-        .btn { background: #007bff; color: white; padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; font-size: 0.75em; }
-        .btn:hover { background: #0056b3; }
-        .badge { padding: 2px 5px; border-radius: 3px; font-weight: bold; font-size: 0.7em; white-space: nowrap; }
-        .alta { background: #dc3545; color: white; }
-        .media { background: #ffc107; color: black; }
-        .baixa { background: #28a745; color: white; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
-        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 5px; max-width: 600px; width: 95%; max-height: 80vh; overflow-y: auto; }
-        .close { float: right; cursor: pointer; font-size: 24px; font-weight: bold; }
-        .close:hover { color: red; }
-        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; font-size: 0.75em; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        h2 { border-left: 5px solid #667eea; padding-left: 15px; color: #2c3e50; margin-bottom: 25px; font-size: 1.8em; }
+        
+        .table-wrapper { overflow-x: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.95em; min-width: 1000px; }
+        th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; text-align: left; font-weight: 600; position: sticky; top: 0; }
+        td { padding: 12px 15px; border-bottom: 1px solid #ecf0f1; }
+        tr:hover { background-color: #f8f9ff; }
+        tr:last-child td { border-bottom: none; }
+        
+        .pipeline-col { min-width: 120px; font-weight: 600; color: #667eea; }
+        .erro-col { min-width: 220px; font-size: 0.9em; color: #e74c3c; font-family: 'Courier New', monospace; }
+        .causa-col { min-width: 200px; color: #2980b9; }
+        .acao-col { min-width: 200px; color: #27ae60; }
+        
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; font-weight: 600; transition: all 0.3s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85em; }
+        .alta { background: #ffe5e5; color: #c0392b; }
+        .media { background: #fff3cd; color: #856404; }
+        .baixa { background: #e8f5e9; color: #2e7d32; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; padding: 20px; overflow-y: auto; }
+        .modal-content { position: relative; background: white; margin: 30px auto; padding: 30px; border-radius: 12px; max-width: 700px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .close { position: absolute; top: 15px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; color: #7f8c8d; }
+        .close:hover { color: #e74c3c; }
+        
+        .modal h3 { color: #2c3e50; margin-bottom: 20px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        pre { background: #f5f7fa; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.85em; border-left: 4px solid #667eea; line-height: 1.5; }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: #7f8c8d; }
+        .empty-state svg { width: 60px; height: 60px; margin-bottom: 20px; opacity: 0.5; }
+        
+        .info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .info-item { padding: 10px; background: #f5f7fa; border-radius: 6px; }
+        .info-label { font-weight: 600; color: #667eea; font-size: 0.9em; }
+        .info-value { color: #2c3e50; margin-top: 5px; word-break: break-all; }
     </style>
 </head>
 <body>
-
+ 
 <div class="container">
-    <h2>📊 Monitor Digibee</h2>
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 15%">Pipeline</th>
-                <th style="width: 20%">Erro</th>
-                <th style="width: 18%">Causa</th>
-                <th style="width: 18%">Ação</th>
-                <th style="width: 10%">Severidade</th>
-                <th style="width: 9%">Detalhes</th>
-            </tr>
-        </thead>
-        <tbody id="corpo-tabela">
-            <tr><td colspan="6" style="text-align:center;">Carregando...</td></tr>
-        </tbody>
-    </table>
+    <h2>📊 Monitor de Erros Digibee</h2>
+    
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 12%">Pipeline</th>
+                    <th style="width: 20%">Erro</th>
+                    <th style="width: 20%">Causa Provável</th>
+                    <th style="width: 20%">Ação Recomendada</th>
+                    <th style="width: 12%">Severidade</th>
+                    <th style="width: 10%; text-align: center;">Detalhes</th>
+                </tr>
+            </thead>
+            <tbody id="corpo-tabela">
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                        <div class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p>Carregando dados...</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
-
+ 
 <div id="modal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="fecharModal()">&times;</span>
-        <h3>Detalhes do Erro</h3>
+        <h3>📋 Detalhes Completos do Erro</h3>
+        
+        <div id="modalDetails"></div>
+        
+        <h4 style="margin-top: 25px; color: #2c3e50; margin-bottom: 15px;">JSON Completo:</h4>
         <pre id="modalBody"></pre>
     </div>
 </div>
-
+ 
 <script>
     function truncar(texto, max) {
         if (!texto) return 'N/A';
-        max = max || 25;
+        max = max || 40;
         return texto.length > max ? texto.substring(0, max) + '...' : texto;
     }
-
+ 
+    function formatarTexto(texto) {
+        if (!texto) return 'N/A';
+        return texto;
+    }
+ 
     function carregarErros() {
         fetch('/listar-erros')
             .then(res => res.json())
             .then(data => {
                 const corpoTabela = document.getElementById('corpo-tabela');
                 if (data.length === 0) {
-                    corpoTabela.innerHTML = "<tr><td colspan='6' style='text-align:center; padding: 20px;'>Nenhum erro registrado</td></tr>";
+                    corpoTabela.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                                <div class="empty-state">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p>Nenhum erro registrado</p>
+                                </div>
+                            </td>
+                        </tr>`;
                     return;
                 }
+                
                 corpoTabela.innerHTML = "";
                 data.forEach((e, i) => {
                     const severidade = e.severidade || 'media';
-                    const badgeClass = 'badge ' + severidade;
+                    const badgeClass = `badge ${severidade}`;
                     
-                    corpoTabela.innerHTML += '<tr>' +
-                        '<td title="' + (e.pipeline_name || '') + '" style="max-width: 15%"><b>' + truncar(e.pipeline_name, 12) + '</b></td>' +
-                        '<td title="' + (e.erro_mensagem || '') + '" style="max-width: 20%; font-size: 0.75em;">' + truncar(e.erro_mensagem, 18) + '</td>' +
-                        '<td title="' + (e.causa_provavel || '') + '" style="max-width: 18%">' + truncar(e.causa_provavel, 15) + '</td>' +
-                        '<td title="' + (e.acao_recomendada || '') + '" style="max-width: 18%">' + truncar(e.acao_recomendada, 15) + '</td>' +
-                        '<td style="text-align: center;"><span class="' + badgeClass + '">' + severidade.toUpperCase() + '</span></td>' +
-                        '<td style="text-align: center;"><button class="btn" onclick="verDetalhes(' + i + ')">Ver</button></td>' +
-                        '</tr>';
+                    corpoTabela.innerHTML += `
+                        <tr>
+                            <td class="pipeline-col">${formatarTexto(e.pipeline_name)}</td>
+                            <td class="erro-col" title="${e.erro_mensagem || ''}">${truncar(e.erro_mensagem, 35)}</td>
+                            <td class="causa-col" title="${e.causa_provavel || ''}">${formatarTexto(e.causa_provavel)}</td>
+                            <td class="acao-col" title="${e.acao_recomendada || ''}">${formatarTexto(e.acao_recomendada)}</td>
+                            <td style="text-align: center;"><span class="${badgeClass}">${severidade.toUpperCase()}</span></td>
+                            <td style="text-align: center;"><button class="btn" onclick="verDetalhes(${i})">Ver</button></td>
+                        </tr>`;
                 });
                 window.erros = data;
             })
             .catch(err => {
                 console.error(err);
-                document.getElementById('corpo-tabela').innerHTML = "<tr><td colspan='6' style='color:red; text-align: center;'>Erro ao carregar dados</td></tr>";
+                document.getElementById('corpo-tabela').innerHTML = `
+                    <tr>
+                        <td colspan="6" style="color: #e74c3c; text-align: center; padding: 20px;">
+                            ⚠️ Erro ao carregar dados
+                        </td>
+                    </tr>`;
             });
     }
-
+ 
     function verDetalhes(index) {
         const erro = window.erros[index];
+        
+        // Criar seção de detalhes legíveis
+        const detalhes = `
+            <div class="info-row">
+                <div class="info-item">
+                    <div class="info-label">Pipeline</div>
+                    <div class="info-value">${erro.pipeline_name || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Severidade</div>
+                    <div class="info-value"><span class="badge ${erro.severidade}">${(erro.severidade || 'media').toUpperCase()}</span></div>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-item">
+                    <div class="info-label">Causa Provável</div>
+                    <div class="info-value">${erro.causa_provavel || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Ação Recomendada</div>
+                    <div class="info-value">${erro.acao_recomendada || 'N/A'}</div>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-item">
+                    <div class="info-label">Mensagem de Erro</div>
+                    <div class="info-value">${erro.erro_mensagem || 'N/A'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Código do Erro</div>
+                    <div class="info-value">${erro.error_code || 'N/A'}</div>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-item" style="grid-column: 1/-1;">
+                    <div class="info-label">Timestamp</div>
+                    <div class="info-value">${new Date(parseInt(erro.timestamp)).toLocaleString('pt-BR') || 'N/A'}</div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modalDetails').innerHTML = detalhes;
         document.getElementById('modalBody').innerText = JSON.stringify(erro, null, 2);
         document.getElementById('modal').style.display = 'block';
     }
-
+ 
     function fecharModal() {
         document.getElementById('modal').style.display = 'none';
     }
-
+ 
     window.onclick = function(event) {
         const modal = document.getElementById('modal');
         if (event.target == modal) {
             modal.style.display = 'none';
         }
     }
-
+ 
     carregarErros();
     setInterval(carregarErros, 5000);
 </script>
-
+ 
 </body>
 </html>
